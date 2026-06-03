@@ -1,9 +1,20 @@
-import type { AdapterModelProfileDefinition } from "@paperclipai/adapter-utils";
+import type {
+  AdapterModel,
+  AdapterModelProfileDefinition,
+  AdapterConfigSchema,
+  ServerAdapterModule,
+} from "@paperclipai/adapter-utils";
 
-export const type = "opencode_server";
-export const label = "OpenCode (server)";
-export const models: Array<{ id: string; label: string }> = [];
-export const modelProfiles: AdapterModelProfileDefinition[] = [
+import { execute } from "./server/execute.js";
+import { testEnvironment } from "./server/test.js";
+import { sessionCodec } from "./server/codec.js";
+import { listOpenCodeServerModels } from "./server/models.js";
+import { getOpenCodeServerQuota } from "./server/stats.js";
+import { getOpenCodeServerConfigSchema } from "./ui/config-schema.js";
+
+const DEFAULT_MODELS: AdapterModel[] = [];
+
+const MODEL_PROFILES: AdapterModelProfileDefinition[] = [
   {
     key: "cheap",
     label: "Cheap",
@@ -12,7 +23,8 @@ export const modelProfiles: AdapterModelProfileDefinition[] = [
     source: "adapter_default",
   },
 ];
-export const agentConfigurationDoc = `# opencode_server agent configuration
+
+const AGENT_CONFIGURATION_DOC = `# opencode_server agent configuration
 
 Adapter: opencode_server
 
@@ -45,3 +57,22 @@ Notes:
 - Session KV cache persists across heartbeats via session resume
 - Remote server: set hostname to the remote IP and add password
 `;
+
+export function createServerAdapter(): ServerAdapterModule {
+  return {
+    type: "opencode_server",
+    execute,
+    testEnvironment,
+    sessionCodec,
+    models: DEFAULT_MODELS,
+    modelProfiles: MODEL_PROFILES,
+    listModels: () => listOpenCodeServerModels({ hostname: "127.0.0.1", port: 4096 }),
+    getQuotaWindows: () => getOpenCodeServerQuota({ hostname: "127.0.0.1", port: 4096 }),
+    getConfigSchema: () => Promise.resolve(getOpenCodeServerConfigSchema()),
+    supportsLocalAgentJwt: true,
+    supportsInstructionsBundle: true,
+    instructionsPathKey: "instructionsFilePath",
+    requiresMaterializedRuntimeSkills: false,
+    agentConfigurationDoc: AGENT_CONFIGURATION_DOC,
+  };
+}
