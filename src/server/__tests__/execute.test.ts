@@ -28,12 +28,13 @@ describe("execute", () => {
 
   it("creates a session and returns execution result on success", async () => {
     let callCount = 0;
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: string, init?: RequestInit) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = typeof input === "string" ? input : input.toString();
       callCount++;
-      if (init?.method === "POST" && url.toString().includes("/session") && !url.toString().includes("/message")) {
+      if (init?.method === "POST" && url.includes("/session") && !url.includes("/message")) {
         return { ok: true, json: async () => ({ id: "ses_live_123" }) } as Response;
       }
-      if (url.toString().includes("/message")) {
+      if (url.includes("/message")) {
         return {
           ok: true,
           json: async () => ({
@@ -64,8 +65,9 @@ describe("execute", () => {
       runtime: { sessionId: "ses_prev_456", sessionParams: { sessionId: "ses_prev_456" } },
     };
 
-    vi.spyOn(globalThis, "fetch").mockImplementation(async (url: string) => {
-      if (url.toString().includes("/message")) {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input: string | URL | Request) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.includes("/message")) {
         return {
           ok: true,
           json: async () => ({

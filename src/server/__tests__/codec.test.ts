@@ -30,7 +30,7 @@ describe("sessionCodec", () => {
   });
 
   it("getDisplayId returns sessionId string", () => {
-    expect(sessionCodec.getDisplayId({ sessionId: "ses_123" })).toBe("ses_123");
-    expect(sessionCodec.getDisplayId(null)).toBeNull();
+    expect(sessionCodec.getDisplayId!({ sessionId: "ses_123" })).toBe("ses_123");
+    expect(sessionCodec.getDisplayId!(null)).toBeNull();
   });
 });
