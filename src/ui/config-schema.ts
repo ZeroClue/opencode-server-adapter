@@ -43,8 +43,8 @@ export function getOpenCodeServerConfigSchema(): AdapterConfigSchema {
         key: "cheapModel",
         label: "Cheap model",
         type: "combobox",
-        default: "",
-        hint: "Optional cheaper model for non-critical work.",
+        default: "opencode-go/deepseek-v4-flash",
+        hint: "Cheaper model for cost-sensitive work. Defaults to opencode-go/deepseek-v4-flash.",
       },
       {
         key: "agent",

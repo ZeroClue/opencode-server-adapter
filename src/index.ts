@@ -18,8 +18,8 @@ const MODEL_PROFILES: AdapterModelProfileDefinition[] = [
   {
     key: "cheap",
     label: "Cheap",
-    description: "Use the configured cheap model for cost-sensitive work.",
-    adapterConfig: { variant: "low" },
+    description: "Use mimo-v2.5 as a cheaper model for cost-sensitive work.",
+    adapterConfig: { model: "opencode-go/deepseek-v4-flash" },
     source: "adapter_default",
   },
 ];
