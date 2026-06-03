@@ -21,7 +21,7 @@ paperclipai plugin install @zeroclue/opencode-server-adapter
 
 ## Quick Start
 
-1. Ensure opencode CLI is installed and authenticated:
+1. Ensure opencode CLI is installed and authenticated ([get OpenCode Go](https://opencode.ai/go?ref=JAFCG08A7T)):
 ```bash
 opencode auth list
 ```
@@ -83,3 +83,9 @@ pnpm test
 ## License
 
 MIT
+
+---
+
+**OpenCode Go?** [Get started with OpenCode](https://opencode.ai/go?ref=JAFCG08A7T) — multi-provider AI coding agent for the terminal.
+
+**Support the project:** If this plugin saves you time and you're feeling generous, [buy me a coffee](https://www.buymeacoffee.com/thezeroclue) ☕
