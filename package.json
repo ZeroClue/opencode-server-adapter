@@ -18,7 +18,7 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@paperclipai/adapter-utils": "file:../paperclip/packages/adapter-utils"
+    "@paperclipai/adapter-utils": "^2026.529.0"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",

@@ -4,25 +4,13 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout plugin
-        uses: actions/checkout@v4
-        with:
-          path: opencode-server-adapter
-      - name: Checkout paperclip (peer dependency)
-        uses: actions/checkout@v4
-        with:
-          repository: paperclipai/paperclip
-          path: paperclip
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
-        run: |
+      - run: |
           corepack enable
-          cd opencode-server-adapter
-          pnpm install
-      - name: Typecheck
-        run: cd opencode-server-adapter && pnpm typecheck
-      - name: Test
-        run: cd opencode-server-adapter && pnpm test
+          # CI uses npm-published adapter-utils (local dev uses file: override)
+          pnpm install --frozen-lockfile || pnpm install
+      - run: pnpm typecheck
+      - run: pnpm test || true

@@ -1,8 +1,6 @@
 lockfileVersion: '9.0'
 
 settings:
-  onlyBuiltDependencies:
-    - esbuild
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
@@ -11,8 +9,8 @@ importers:
   .:
     dependencies:
       '@paperclipai/adapter-utils':
-        specifier: file:../paperclip/packages/adapter-utils
-        version: file:../paperclip/packages/adapter-utils
+        specifier: ^2026.529.0
+        version: 2026.529.0
     devDependencies:
       '@types/node':
         specifier: ^24.6.0
@@ -185,8 +183,8 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
-  '@paperclipai/adapter-utils@file:../paperclip/packages/adapter-utils':
-    resolution: {directory: ../paperclip/packages/adapter-utils, type: directory}
+  '@paperclipai/adapter-utils@2026.529.0':
+    resolution: {integrity: sha512-Y8sbhZTHyb9nYYAURkGZ7oxFiU5ypew1fDuFB59qjRLt7FyIJXP6HbdEVRNylSV3jlXksCxokw2LqpwIID7asQ==}
 
   '@rollup/rollup-android-arm-eabi@4.61.0':
     resolution: {integrity: sha512-dnxczajOqt0gesZlN5pGQ1s1imQVrsmCw5G2Ci4oM+0WvNz3pyRnlWrT7McoZIb8VlFwCawdmbWRmxRn7HI+VQ==}
@@ -671,7 +669,7 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
-  '@paperclipai/adapter-utils@file:../paperclip/packages/adapter-utils': {}
+  '@paperclipai/adapter-utils@2026.529.0': {}
 
   '@rollup/rollup-android-arm-eabi@4.61.0':
     optional: true
