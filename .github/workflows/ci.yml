@@ -4,21 +4,25 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout plugin
+        uses: actions/checkout@v4
         with:
           path: opencode-server-adapter
-      - uses: actions/checkout@v4
+      - name: Checkout paperclip (peer dependency)
+        uses: actions/checkout@v4
         with:
           repository: paperclipai/paperclip
           path: paperclip
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: |
+      - name: Install dependencies
+        run: |
           corepack enable
+          cd opencode-server-adapter
           pnpm install
-        working-directory: opencode-server-adapter
-      - run: pnpm typecheck
-        working-directory: opencode-server-adapter
-      - run: pnpm test
-        working-directory: opencode-server-adapter
+      - name: Typecheck
+        run: cd opencode-server-adapter && pnpm typecheck
+      - name: Test
+        run: cd opencode-server-adapter && pnpm test
