@@ -5,9 +5,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: opencode-server-adapter
+      - uses: actions/checkout@v4
+        with:
+          repository: paperclipai/paperclip
+          path: paperclip
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: corepack enable && pnpm install
+      - run: |
+          corepack enable
+          pnpm install
+        working-directory: opencode-server-adapter
       - run: pnpm typecheck
+        working-directory: opencode-server-adapter
       - run: pnpm test
+        working-directory: opencode-server-adapter
