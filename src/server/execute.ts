@@ -1,5 +1,5 @@
 import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclipai/adapter-utils";
-import { asString, asNumber, asBoolean, parseObject } from "@paperclipai/adapter-utils/server-utils";
+import { asString, asNumber, parseObject } from "@paperclipai/adapter-utils/server-utils";
 import { ensureOpenCodeServerRunning } from "./lifecycle.js";
 
 function buildServerConfig(ctx: AdapterExecutionContext): { hostname: string; port: number; command: string; password?: string } {
