@@ -10,7 +10,6 @@ jobs:
           node-version: 22
       - run: |
           corepack enable
-          # CI uses npm-published adapter-utils (local dev uses file: override)
           pnpm install --frozen-lockfile || pnpm install
       - run: pnpm typecheck
-      - run: pnpm test || true
+      - run: pnpm test
