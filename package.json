@@ -1,0 +1,36 @@
+{
+  "name": "@zeroclue/opencode-server-adapter",
+  "version": "0.1.0",
+  "description": "Paperclip adapter plugin that connects to a persistent opencode serve instance via its REST API",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server/index.ts",
+    "./ui": "./src/ui/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@paperclipai/adapter-utils": "file:../paperclip/packages/adapter-utils"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.0"
+  },
+  "files": [
+    "dist",
+    "src",
+    "ui-parser.ts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
