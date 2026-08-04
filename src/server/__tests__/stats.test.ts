@@ -45,4 +45,43 @@ describe("getOpenCodeServerQuota", () => {
     const result = await getOpenCodeServerQuota({ hostname: "127.0.0.1", port: 4096 });
     expect(result.ok).toBe(false);
   });
+
+  it("reaches the configured non-localhost hostname and port", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response);
+
+    await getOpenCodeServerQuota({ hostname: "10.20.30.40", port: 5050, password: "s3cret" });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://10.20.30.40:5050/session?limit=100");
+  });
+
+  it("sends HTTP Basic Authorization header when password is set", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response);
+
+    await getOpenCodeServerQuota({ hostname: "10.20.30.40", port: 5050, password: "s3cret" });
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const headers = init?.headers as Record<string, string>;
+    expect(headers?.Authorization).toBe(`Basic ${Buffer.from("opencode:s3cret").toString("base64")}`);
+  });
+
+  it("does not set Authorization when no password is configured", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response);
+
+    await getOpenCodeServerQuota({ hostname: "10.20.30.40", port: 5050 });
+
+    const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    const headers = init?.headers as Record<string, string> | undefined;
+    expect(headers?.Authorization).toBeUndefined();
+  });
 });

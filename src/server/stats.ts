@@ -1,19 +1,10 @@
 import type { ProviderQuotaResult, QuotaWindow } from "@paperclipai/adapter-utils";
-
-interface ServerConnection {
-  hostname: string;
-  port: number;
-  password?: string;
-}
+import { basicAuthHeaders, serverUrl, type ServerConnection } from "./conn.js";
 
 export async function getOpenCodeServerQuota(conn: ServerConnection): Promise<ProviderQuotaResult> {
   try {
-    const baseUrl = `http://${conn.hostname}:${conn.port}`;
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (conn.password) {
-      headers["Authorization"] = `Basic ${Buffer.from(`opencode:${conn.password}`).toString("base64")}`;
-    }
-    const res = await fetch(`${baseUrl}/session?limit=100`, { headers, signal: AbortSignal.timeout(5000) });
+    const headers: Record<string, string> = { "Content-Type": "application/json", ...basicAuthHeaders(conn) };
+    const res = await fetch(`${serverUrl(conn)}/session?limit=100`, { headers, signal: AbortSignal.timeout(5000) });
     if (!res.ok) {
       return { provider: "opencode-server", ok: false, error: `Server returned ${res.status}`, windows: [] };
     }

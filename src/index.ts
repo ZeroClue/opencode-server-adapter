@@ -1,7 +1,6 @@
 import type {
   AdapterModel,
   AdapterModelProfileDefinition,
-  AdapterConfigSchema,
   ServerAdapterModule,
 } from "@paperclipai/adapter-utils";
 
@@ -11,6 +10,7 @@ import { sessionCodec } from "./server/codec.js";
 import { listOpenCodeServerModels } from "./server/models.js";
 import { getOpenCodeServerQuota } from "./server/stats.js";
 import { getOpenCodeServerConfigSchema } from "./ui/config-schema.js";
+import { DEFAULT_CONN, coerceConn, type ServerConnection } from "./server/conn.js";
 
 const DEFAULT_MODELS: AdapterModel[] = [];
 
@@ -58,7 +58,8 @@ Notes:
 - Remote server: set hostname to the remote IP and add password
 `;
 
-export function createServerAdapter(): ServerAdapterModule {
+export function createServerAdapter(discoveryConfig?: unknown): ServerAdapterModule {
+  const discoveryConn: ServerConnection = coerceConn(discoveryConfig, DEFAULT_CONN);
   return {
     type: "opencode_server",
     execute,
@@ -66,8 +67,8 @@ export function createServerAdapter(): ServerAdapterModule {
     sessionCodec,
     models: DEFAULT_MODELS,
     modelProfiles: MODEL_PROFILES,
-    listModels: () => listOpenCodeServerModels({ hostname: "127.0.0.1", port: 4096 }),
-    getQuotaWindows: () => getOpenCodeServerQuota({ hostname: "127.0.0.1", port: 4096 }),
+    listModels: () => listOpenCodeServerModels(discoveryConn),
+    getQuotaWindows: () => getOpenCodeServerQuota(discoveryConn),
     getConfigSchema: () => Promise.resolve(getOpenCodeServerConfigSchema()),
     supportsLocalAgentJwt: true,
     supportsInstructionsBundle: true,

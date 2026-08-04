@@ -1,13 +1,10 @@
 import type { AdapterModel } from "@paperclipai/adapter-utils";
-
-interface ServerConnection {
-  hostname: string;
-  port: number;
-}
+import { basicAuthHeaders, serverUrl, type ServerConnection } from "./conn.js";
 
 export async function listOpenCodeServerModels(conn: ServerConnection): Promise<AdapterModel[]> {
   try {
-    const res = await fetch(`http://${conn.hostname}:${conn.port}/provider`, {
+    const res = await fetch(`${serverUrl(conn)}/provider`, {
+      headers: { ...basicAuthHeaders(conn) },
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) return [];
