@@ -1,0 +1,21 @@
+services:
+  opencode-serve:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: opencode-serve:local
+    container_name: opencode-serve
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "${OPENCODE_PORT:-4096}:4096"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4096/global/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    # The container needs curl for the healthcheck above; if you build a
+    # slimmer image without curl, swap the test out for a TCP probe:
+    #   test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/4096 && echo -e 'GET /global/health HTTP/1.0\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q 200"]
