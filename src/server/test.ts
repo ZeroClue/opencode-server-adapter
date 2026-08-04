@@ -20,10 +20,12 @@ export async function testEnvironment(
   const port = asNumber(ctx.config.port, 4096);
   const baseUrl = `http://${hostname}:${port}`;
   const model = asString(ctx.config.model, "");
+  const modeRaw = asString(ctx.config.mode, "");
+  const mode: "spawn" | "connect" | undefined = modeRaw === "connect" || modeRaw === "spawn" ? modeRaw : undefined;
 
   // 1. Server healthcheck
   try {
-    await ensureOpenCodeServerRunning({ hostname, port, command: asString(ctx.config.command, "opencode") });
+    await ensureOpenCodeServerRunning({ hostname, port, command: asString(ctx.config.command, "opencode"), ...(mode ? { mode } : {}) });
     const healthRes = await fetch(`${baseUrl}/global/health`, { signal: AbortSignal.timeout(3000) });
     if (healthRes.ok) {
       const healthData = await healthRes.json() as any;
@@ -40,15 +42,25 @@ export async function testEnvironment(
       });
     }
   } catch (err) {
-    checks.push({
-      code: "opencode_server_unreachable",
-      level: "error",
-      message: `Cannot reach opencode serve at ${baseUrl}`,
-      hint: "Ensure opencode CLI is installed and Paperclip can start it as a child process.",
-    });
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes("cannot restart remotely")) {
+      checks.push({
+        code: "opencode_server_remote_unreachable",
+        level: "error",
+        message: `Cannot reach remote opencode serve at ${baseUrl}`,
+        hint: "Remote opencode server is unreachable. The adapter is in connect mode and cannot restart a remote container — restart your container host or tailnet VM.",
+      });
+    } else {
+      checks.push({
+        code: "opencode_server_unreachable",
+        level: "error",
+        message: `Cannot reach opencode serve at ${baseUrl}`,
+        hint: "Ensure opencode CLI is installed and Paperclip can start it as a child process.",
+      });
+    }
   }
 
-  const serverOk = !checks.some((c) => c.code === "opencode_server_unreachable" || c.code === "opencode_server_unhealthy");
+  const serverOk = !checks.some((c) => c.code === "opencode_server_unreachable" || c.code === "opencode_server_unhealthy" || c.code === "opencode_server_remote_unreachable");
   if (serverOk) {
     try {
       const providerRes = await fetch(`${baseUrl}/provider`, { signal: AbortSignal.timeout(3000) });

@@ -22,6 +22,14 @@
 - Default: `"opencode"`
 - Path to the opencode binary. Defaults to resolving from PATH.
 
+### mode
+- Type: `"spawn"` | `"connect"`
+- Default: `"spawn"`
+- Controls server lifecycle behavior.
+  - `spawn`: Paperclip starts `opencode serve` as a child process and owns its lifecycle (SIGTERM on teardown). Use for local dev.
+  - `connect`: Paperclip polls an existing `opencode serve` endpoint and never spawns. Use for remote/Docker servers; on unreachable, the adapter returns an error — it cannot restart a remote container.
+- Auto-promotion: if `mode` is unset and `hostname` is anything other than `127.0.0.1` / `localhost` / `::1`, the adapter treats it as `connect`. Set explicitly to override.
+
 ### model
 - Type: model (dropdown)
 - Required: yes
@@ -51,6 +59,7 @@
   "hostname": "127.0.0.1",
   "port": 4096,
   "command": "opencode",
+  "mode": "spawn",
   "agent": "build",
   "steps": 300
 }

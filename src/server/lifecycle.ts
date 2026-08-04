@@ -1,18 +1,23 @@
 import { spawn, type ChildProcess } from "node:child_process";
+import { serverUrl, type ServerConnection } from "./conn.js";
 
-interface ServerConfig {
-  hostname: string;
-  port: number;
+export interface ServerConfig extends ServerConnection {
   command: string;
-  password?: string;
+  mode?: "spawn" | "connect";
 }
 
-let childProcess: ChildProcess | null = null;
-let currentPid: number | null = null;
+const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
 
-function serverUrl(config: ServerConfig): string {
-  return `http://${config.hostname}:${config.port}`;
+function resolveMode(config: ServerConfig): "spawn" | "connect" {
+  if (config.mode === "connect" || config.mode === "spawn") return config.mode;
+  return LOOPBACK_HOSTS.has(config.hostname.toLowerCase()) ? "spawn" : "connect";
 }
+
+export const REMOTE_UNREACHABLE_ERROR = (key: string): string =>
+  `Remote opencode server unreachable at ${key} — cannot restart remotely; restart your container host or tailnet VM.`;
+
+const children = new Map<string, ChildProcess>();
+const pids = new Map<string, number>();
 
 async function healthcheck(config: ServerConfig): Promise<boolean> {
   try {
@@ -25,22 +30,31 @@ async function healthcheck(config: ServerConfig): Promise<boolean> {
   }
 }
 
-export function getChildPid(): number | null {
-  return currentPid;
+export function getChildPid(config?: ServerConfig): number | null {
+  if (config) return pids.get(serverUrl(config)) ?? null;
+  // Backwards-compatible fallback: any tracked pid.
+  const first = pids.values().next();
+  return first.done ? null : first.value;
 }
 
 export async function ensureOpenCodeServerRunning(
   config: ServerConfig,
 ): Promise<boolean> {
+  const key = serverUrl(config);
   if (await healthcheck(config)) {
     return true;
   }
 
-  if (childProcess && !childProcess.killed) {
-    childProcess.kill();
+  const existing = children.get(key);
+  if (existing && !existing.killed) {
+    existing.kill();
   }
-  childProcess = null;
-  currentPid = null;
+  children.delete(key);
+  pids.delete(key);
+
+  if (resolveMode(config) === "connect") {
+    throw new Error(REMOTE_UNREACHABLE_ERROR(key));
+  }
 
   const env: Record<string, string> = { ...process.env } as Record<string, string>;
   if (config.password) {
@@ -51,16 +65,16 @@ export async function ensureOpenCodeServerRunning(
     try {
       const proc = spawn(config.command, [
         "serve", "--port", String(config.port),
-        "--hostname", config.hostname
+        "--hostname", config.hostname,
       ], { env, stdio: "ignore", detached: false });
 
-      childProcess = proc;
-      currentPid = proc.pid ?? null;
+      children.set(key, proc);
+      pids.set(key, proc.pid ?? -1);
 
       proc.on("exit", () => {
-        if (currentPid === proc.pid) {
-          childProcess = null;
-          currentPid = null;
+        if (pids.get(key) === proc.pid) {
+          children.delete(key);
+          pids.delete(key);
         }
       });
 
@@ -73,7 +87,7 @@ export async function ensureOpenCodeServerRunning(
         if (Date.now() - start > 10_000) {
           reject(new Error(
             `Failed to start opencode serve on ${config.hostname}:${config.port}. ` +
-            `Verify opencode is installed and provider auth is configured (opencode auth login).`
+            `Verify opencode is installed and provider auth is configured (opencode auth login).`,
           ));
           return;
         }
@@ -83,21 +97,31 @@ export async function ensureOpenCodeServerRunning(
     } catch (err) {
       reject(new Error(
         `Failed to spawn opencode serve: ${err instanceof Error ? err.message : String(err)}. ` +
-        `Ensure opencode CLI is installed (curl -fsSL https://opencode.ai/install | bash).`
+        `Ensure opencode CLI is installed (curl -fsSL https://opencode.ai/install | bash).`,
       ));
     }
   });
 }
 
-export function stopOpenCodeServer(): void {
-  if (childProcess && !childProcess.killed) {
-    childProcess.kill("SIGTERM");
+export function stopOpenCodeServer(config?: ServerConfig): void {
+  const killOne = (key: string) => {
+    const proc = children.get(key);
+    if (!proc || proc.killed) {
+      children.delete(key);
+      pids.delete(key);
+      return;
+    }
+    proc.kill("SIGTERM");
+    children.delete(key);
+    pids.delete(key);
     setTimeout(() => {
-      if (childProcess && !childProcess.killed) {
-        childProcess.kill("SIGKILL");
-      }
+      if (!proc.killed) proc.kill("SIGKILL");
     }, 5000);
+  };
+
+  if (config) {
+    killOne(serverUrl(config));
+  } else {
+    for (const key of Array.from(children.keys())) killOne(key);
   }
-  childProcess = null;
-  currentPid = null;
 }

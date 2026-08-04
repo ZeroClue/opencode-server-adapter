@@ -33,6 +33,17 @@ export function getOpenCodeServerConfigSchema(): AdapterConfigSchema {
         hint: "Path to the opencode binary. Defaults to resolving from PATH.",
       },
       {
+        key: "mode",
+        label: "Server connection mode",
+        type: "combobox",
+        default: "spawn",
+        options: [
+          { value: "spawn", label: "spawn — Paperclip starts and owns opencode serve as a child process" },
+          { value: "connect", label: "connect — Paperclip polls an existing opencode serve; never spawns" },
+        ],
+        hint: "Default 'spawn' for local dev. Use 'connect' for remote/Docker servers; auto-promotes to 'connect' when hostname is non-loopback.",
+      },
+      {
         key: "model",
         label: "Default model",
         type: "combobox",

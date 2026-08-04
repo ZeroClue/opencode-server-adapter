@@ -2,12 +2,15 @@ import type { AdapterExecutionContext, AdapterExecutionResult } from "@paperclip
 import { asString, asNumber, parseObject } from "@paperclipai/adapter-utils/server-utils";
 import { ensureOpenCodeServerRunning } from "./lifecycle.js";
 
-function buildServerConfig(ctx: AdapterExecutionContext): { hostname: string; port: number; command: string; password?: string } {
+function buildServerConfig(ctx: AdapterExecutionContext): { hostname: string; port: number; command: string; password?: string; mode?: "spawn" | "connect" } {
+  const modeRaw = asString(ctx.config.mode, "");
+  const mode: "spawn" | "connect" | undefined = modeRaw === "connect" || modeRaw === "spawn" ? modeRaw : undefined;
   return {
     hostname: asString(ctx.config.hostname, "127.0.0.1"),
     port: asNumber(ctx.config.port, 4096),
     command: asString(ctx.config.command, "opencode"),
     password: asString(ctx.config.password, ""),
+    ...(mode ? { mode } : {}),
   };
 }
 
