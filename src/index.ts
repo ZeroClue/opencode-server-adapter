@@ -18,7 +18,7 @@ const MODEL_PROFILES: AdapterModelProfileDefinition[] = [
   {
     key: "cheap",
     label: "Cheap",
-    description: "Use mimo-v2.5 as a cheaper model for cost-sensitive work.",
+    description: "Use opencode-go/deepseek-v4-flash as a cheaper model for cost-sensitive work.",
     adapterConfig: { model: "opencode-go/deepseek-v4-flash" },
     source: "adapter_default",
   },
@@ -46,16 +46,20 @@ Core fields:
 - port (number, default: 4096): server listen port
 - password (secret): OPENCODE_SERVER_PASSWORD for HTTP basic auth
 - command (string, default: "opencode"): path to opencode binary
+- mode (string, default: "spawn"): "spawn" to let Paperclip start opencode serve; "connect" to poll an existing endpoint (use for remote/Docker; auto-promotes to "connect" when hostname is non-loopback)
 - model (string, required): model ID in provider/model format
-- cheapModel (string, optional): cheaper model for non-critical work
+- cheapModel (string, optional): cheaper model for non-critical work (defaults to opencode-go/deepseek-v4-flash)
 - agent (string, default: "build"): OpenCode agent to route to
 - steps (number, default: 300): max agentic steps per run
 
 Notes:
-- Server is auto-started as a child process of Paperclip
+- Server is auto-started as a child process of Paperclip in spawn mode (default);
+  in connect mode Paperclip never spawns — the remote host (Docker host, systemd,
+  etc.) owns restart semantics
 - Provider credentials come from "opencode auth login" on the server machine
 - Session KV cache persists across heartbeats via session resume
-- Remote server: set hostname to the remote IP and add password
+- Remote server: set hostname to the remote IP/tailnet name, set mode to "connect"
+  (or leave mode unset to auto-promote), and add password
 `;
 
 export function createServerAdapter(discoveryConfig?: unknown): ServerAdapterModule {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseStdoutLine } from "../../../ui-parser.js";
+import { parseStdoutLine } from "../../ui-parser.js";
 
 describe("ui-parser", () => {
   it("parses assistant text events", () => {
