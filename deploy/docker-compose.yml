@@ -10,8 +10,16 @@ services:
       - .env
     ports:
       - "${OPENCODE_PORT:-4096}:4096"
+      - "${SSH_PORT:-2222}:2222"
+    volumes:
+      # Authorized deploy key — lets the Paperclip host SSH in for
+      # workspace/skills/instructions sync. Mount the *public* key only.
+      - ./ssh/authorized_keys:/home/opc/.ssh/authorized_keys:ro
+      # Persist provider auth + warm session state across container rebuilds.
+      - opencode-auth:/home/opc/.config/opencode
+      - opencode-state:/home/opc/.local/share/opencode
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:4096/global/health"]
+      test: ["CMD", "curl", "-fsS", "-u", "opencode:${OPENCODE_SERVER_PASSWORD}", "http://127.0.0.1:4096/global/health"]
       interval: 15s
       timeout: 3s
       retries: 3
@@ -19,3 +27,7 @@ services:
     # The container needs curl for the healthcheck above; if you build a
     # slimmer image without curl, swap the test out for a TCP probe:
     #   test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/4096 && echo -e 'GET /global/health HTTP/1.0\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q 200"]
+
+volumes:
+  opencode-auth:
+  opencode-state:

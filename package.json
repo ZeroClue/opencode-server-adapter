@@ -1,6 +1,6 @@
 {
   "name": "@zeroclue/opencode-server-adapter",
-  "version": "0.2.0",
+  "version": "0.2.10",
   "description": "Paperclip adapter plugin that connects to a persistent opencode serve instance via its REST API",
   "license": "MIT",
   "type": "module",

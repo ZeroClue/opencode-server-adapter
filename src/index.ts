@@ -9,8 +9,25 @@ import { testEnvironment } from "./server/test.js";
 import { sessionCodec } from "./server/codec.js";
 import { listOpenCodeServerModels } from "./server/models.js";
 import { getOpenCodeServerQuota } from "./server/stats.js";
+import { listOpenCodeServerSkills, syncOpenCodeServerSkills } from "./server/skills.js";
 import { getOpenCodeServerConfigSchema } from "./ui/config-schema.js";
-import { DEFAULT_CONN, coerceConn, type ServerConnection } from "./server/conn.js";
+import { DEFAULT_CONN, coerceConn, discoveryConnFromRecord, type ServerConnection } from "./server/conn.js";
+
+/**
+ * Structural, partial view of the host's optional per-agent discovery context
+ * (`AdapterDiscoveryContext`). The published `@paperclipai/adapter-utils`
+ * version we pin (`^2026.529.0`) predates the `ctx` parameter on discovery
+ * hooks, but the Paperclip server passes the resolved per-agent config at
+ * runtime. We accept it loosely so quota/model discovery targets the agent's
+ * own endpoint when present, while remaining source-compatible with the
+ * pinned typings via structural assignability.
+ */
+export interface DiscoveryContextInput {
+  agentId?: string;
+  companyId?: string;
+  adapterType?: string;
+  config?: Record<string, unknown>;
+}
 
 const DEFAULT_MODELS: AdapterModel[] = [];
 
@@ -50,7 +67,16 @@ Core fields:
 - model (string, required): model ID in provider/model format
 - cheapModel (string, optional): cheaper model for non-critical work (defaults to opencode-go/deepseek-v4-flash)
 - agent (string, default: "build"): OpenCode agent to route to
-- steps (number, default: 300): max agentic steps per run
+- steps (number, default: 300): max agentic steps per run (documented; not yet enforced by the adapter)
+- timeoutSec (number, default: 300): max wall-clock seconds a run may take before the adapter aborts it as timed out
+- instructionsFilePath (string, optional): absolute path to an AGENTS.md-style instructions bundle injected into fresh sessions
+- promptTemplate (string, optional): template text appended to the run prompt as a stable suffix
+
+Warm remote servers (workspace sync over SSH):
+Set sshHost / sshPort / sshUsername / sshPrivateKey / remoteServerCwd to sync the
+local workspace into the remote serve's stable cwd before each run and pull
+changes back after. remoteServerCwd must match the container WORKDIR and stay
+stable across heartbeats so opencode can resume the session.
 
 Notes:
 - Server is auto-started as a child process of Paperclip in spawn mode (default);
@@ -64,15 +90,19 @@ Notes:
 
 export function createServerAdapter(discoveryConfig?: unknown): ServerAdapterModule {
   const discoveryConn: ServerConnection = coerceConn(discoveryConfig, DEFAULT_CONN);
+  const discoverConnFor = (ctx?: DiscoveryContextInput): ServerConnection =>
+    discoveryConnFromRecord(ctx?.config, discoveryConn);
   return {
-    type: "opencode_server",
+type: "opencode_server",
     execute,
     testEnvironment,
     sessionCodec,
     models: DEFAULT_MODELS,
     modelProfiles: MODEL_PROFILES,
-    listModels: () => listOpenCodeServerModels(discoveryConn),
-    getQuotaWindows: () => getOpenCodeServerQuota(discoveryConn),
+    listModels: (ctx?: DiscoveryContextInput) => listOpenCodeServerModels(discoverConnFor(ctx)),
+    getQuotaWindows: (ctx?: DiscoveryContextInput) => getOpenCodeServerQuota(discoverConnFor(ctx)),
+    listSkills: (ctx) => listOpenCodeServerSkills(ctx),
+    syncSkills: (ctx, desired) => syncOpenCodeServerSkills(ctx, desired),
     getConfigSchema: () => Promise.resolve(getOpenCodeServerConfigSchema()),
     supportsLocalAgentJwt: true,
     supportsInstructionsBundle: true,

@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { serverUrl, type ServerConnection } from "./conn.js";
+import { basicAuthHeaders, serverUrl, type ServerConnection } from "./conn.js";
 
 export interface ServerConfig extends ServerConnection {
   command: string;
@@ -22,6 +22,7 @@ const pids = new Map<string, number>();
 async function healthcheck(config: ServerConfig): Promise<boolean> {
   try {
     const res = await fetch(`${serverUrl(config)}/global/health`, {
+      headers: basicAuthHeaders(config),
       signal: AbortSignal.timeout(2000),
     });
     return res.ok;

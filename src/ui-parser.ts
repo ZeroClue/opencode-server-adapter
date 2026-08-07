@@ -19,7 +19,7 @@ export function parseStdoutLine(line: string, ts: string): TranscriptEntry[] {
 
     if (type === "tool_use") {
       const tool = parsed.part?.tool || "tool";
-      const callID = parsed.part?.callID || "";
+      const callID = parsed.part?.callID || parsed.part?.id || "";
       const state = parsed.part?.state || {};
       const input = state.input || {};
       const callEntry: TranscriptEntry = {
@@ -27,10 +27,21 @@ export function parseStdoutLine(line: string, ts: string): TranscriptEntry[] {
         toolUseId: callID || undefined, input,
       };
       if (state.status !== "completed" && state.status !== "error") return [callEntry];
-      const output = state.output || state.error || `${tool} ${state.status}`;
+      const rawOutput = state.output || state.error || `${tool} ${state.status}`;
+      // The board renders tool results by searching these header lines for
+      // status / exit_code / error tokens. The built-in `opencode_local`
+      // parser prepends every metadata field as a key: value line; match it
+      // so exit codes and other run feedback are surfaced, not dropped.
+      const header: string[] = [`status: ${state.status}`];
+      if (state.metadata && typeof state.metadata === "object") {
+        for (const [key, value] of Object.entries(state.metadata)) {
+          if (value !== undefined && value !== null) header.push(`${key}: ${value}`);
+        }
+      }
+      const content = `${header.join("\n")}\n\n${rawOutput}`.trim();
       return [
         callEntry,
-        { kind: "tool_result", ts, toolUseId: callID || tool, content: output, isError: state.status === "error" },
+        { kind: "tool_result", ts, toolUseId: callID || tool, content, isError: state.status === "error" },
       ];
     }
 

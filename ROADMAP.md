@@ -30,21 +30,78 @@ is invisible to the agent. v0.2.0 makes that real:
 - [x] Session resume codec
 - [ ] Integration testing with Paperclip (carried to v0.2.0 as the closing gate)
 
-## v0.2.0 — Remote-Docker / Multi-instance
+## v0.2.0 — Remote-Docker / Multi-instance / Warm-serve sync
 
 The everywhere-able adapter. Ordered so each milestone produces shippable state.
 
+### M1 — Warm-server workspace sync over SSH (shipped ahead of plan)
+The persistent-serve contract needs the local workspace materialized into the
+remote serve's STABLE cwd each run and pulled back after, so opencode can
+resume the session across heartbeats instead of cold-re-reading the repo.
+
+- [x] **`src/server/remote-sync.ts`** (new): `RemoteSyncConfig`,
+      `readRemoteSyncConfig`, `sshEnabled` (requires sshHost + sshUsername +
+      sshPrivateKey + remoteServerCwd), `buildSshSpec`, `buildRemoteSync`
+      → `{ enabled, spec, remoteDir, prepare(), restore() }`. Uses
+      `prepareWorkspaceForSshExecution` / `restoreWorkspaceFromSshExecution`
+      from `@paperclipai/adapter-utils/ssh` into a STABLE remote dir (NOT the
+      throwaway `.paperclip-runtime/runs/<runId>` staging that
+      `prepareRemoteManagedRuntime` uses, which would break warm-session
+      identity).
+- [x] **`src/server/execute.ts`**: `prepare()` before POST /session/message,
+      `restore()` in `finally` (even on error) so the local workspace never
+      goes stale; `activeCwd` = remote cwd when ssh enabled.
+- [x] **`src/ui/config-schema.ts`** + **`docs/configuration.md`**: SSH fields
+      (`sshHost`, `sshPort`=2222, `sshUsername`, `sshPrivateKey`,
+      `sshKnownHosts`, `strictHostKeyChecking` toggle, `remoteServerCwd`).
+- [x] Tests: `src/server/__tests__/remote-sync.test.ts` (7 tests).
+
+### M1b — Skills materialization (shipped ahead of plan)
+Warm servers can't take a per-run `--skills` CLI flag, so desired Paperclip
+skills must be materialized onto the remote host's discovery paths
+(`~/.claude/skills/*`, `~/.config/opencode/skills/*`) during prepare.
+
+- [x] **`src/server/skills.ts`** (new): `listSkills` / `syncSkills`
+      entrypoints (`listOpenCodeServerSkills` / `syncOpenCodeServerSkills`)
+      via `buildPersistentSkillSnapshot`; `pushSkillsToRemote` syncs each
+      desired skill dir over SSH to every relative discovery path during
+      execute prepare.
+- [x] **`src/index.ts`**: wire `listSkills` / `syncSkills` into the
+      `ServerAdapterModule`.
+- [x] Tests: `src/server/__tests__/skills.test.ts` (6 tests).
+
+### M1c — Instructions bundle + safe session resume (shipped ahead of plan)
+Warm-serve correctness: the agent's instructions bundle must reach the model
+without being re-burned on every heartbeat, and a session saved for a
+different workspace must never be resumed.
+
+- [x] **`src/server/execute.ts`**: read the resolved `instructionsFilePath`
+      (absolute, or relative to the execution cwd) and inject it into the
+      prompt on a FRESH session only; on a resumed session log that it is
+      skipped to avoid wasting tokens (mirrors `opencode-local`).
+- [x] **`src/server/execute.ts`**: guard session resume — resume only when the
+      stored `cwd` matches the active execution cwd
+      (`canResumeSession`); otherwise log and start fresh.
+- [x] Tests: instructions injected on fresh-only, cwd-mismatch not resumed,
+      cwd-match resumed (in `execute.test.ts`).
+
 ### M1 — Make discovery remote-aware (unblocks everything)
-- [ ] **`src/index.ts`**: stop hardcoding `listModels` / `getQuotaWindows` to
+- [x] **`src/index.ts`**: stop hardcoding `listModels` / `getQuotaWindows` to
       `127.0.0.1:4096`. Thread the agent config (or the per-adapter connection
       object) through to both helpers, the same way `execute` /
       `testEnvironment` already use `buildServerConfig`. **This is the single
       most urgent blocker for remote use** — see AGENTS.md gotcha #2.
-  - Tests: add `models.test.ts` / `stats.test.ts` cases asserting the
-    configured `hostname`/`port`/`password` actually reach the right URL.
-- [ ] **`src/server/models.ts` + `stats.ts`**: accept the connection config as
+      Shipped in v0.2.10: the hooks now build their `ServerConnection` from the
+      host-provided per-agent discovery context (`ctx?.config`) when present,
+      falling back to the factory discovery config then `DEFAULT_CONN`.
+  - Tests: `src/__tests__/index.test.ts` asserts the per-agent
+    `hostname`/`port`/`password` reach the right URL (and the default fallback
+    when no ctx) for both `listModels` and `getQuotaWindows`.
+- [x] **`src/server/models.ts` + `stats.ts`**: accept the connection config as
       a typed arg (move them off bare positional `conn` where it's loose);
       reuse a single `serverUrl(config)` + `basicAuthHeaders(config)` pair.
+      Both already take a typed `ServerConnection` and reuse the shared
+      `serverUrl` / `basicAuthHeaders` pair from `conn.ts`.
 
 ### M2 — Multi-instance: per-config child state
 - [x] **`src/server/lifecycle.ts`**: replace module-global `childProcess` /
@@ -109,6 +166,9 @@ The everywhere-able adapter. Ordered so each milestone produces shippable state.
       with jitter; classify 5xx vs network)
 - [ ] Performance benchmarks vs `opencode_local` (cold-start cost, throughput,
       memory) — publish results
+- [ ] Memory persistence over the active warm server session (à la the
+      `syncSkills` pattern, on the warm serve's disk) — the remaining
+      deliberately-unimplemented contract surface
 
 ## Future
 
@@ -126,7 +186,8 @@ The everywhere-able adapter. Ordered so each milestone produces shippable state.
 - **Built-in process supervisor inside the adapter.** The remote host owns
   restart semantics (`docker restart=always`, systemd, etc.). The adapter
   healthchecks; it does not remotely spawn or restart.
-- **Adapter-implemented skills discovery** (`listSkills`/`syncSkills`), model
-  detection, or session management beyond the resume codec — all upstream
-  contract areas deliberately left unimplemented (AGENTS.md "Adapter ↔
-  Paperclip contract surface").
+- **Adapter-implemented model detection, memory persistence, or session
+  management beyond the resume codec** — the remaining upstream contract areas
+  deliberately left unimplemented. Skills discovery (`listSkills`/`syncSkills`)
+  was shipped in v0.2.0 M1b (AGENTS.md "Adapter ↔ Paperclip contract
+  surface").

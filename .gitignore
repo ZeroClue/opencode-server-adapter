@@ -10,3 +10,7 @@ dist/
 *.orig
 *~
 .tmp/
+
+# Deploy secrets: the private deploy key + real .env live here, never in VCS.
+deploy/ssh/
+deploy/.env

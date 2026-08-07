@@ -71,6 +71,52 @@ describe("ui-parser", () => {
     });
   });
 
+  it("prepends a status: and metadata header to tool results (exit-code parity)", () => {
+    const ts = "2026-06-03T00:00:00.000Z";
+    const line = JSON.stringify({
+      type: "tool_use",
+      part: {
+        callID: "call_exit",
+        tool: "bash",
+        state: {
+          status: "completed",
+          input: { command: "git fetch" },
+          output: "Done",
+          metadata: { exit: 0, exit_code: 0 },
+        },
+      },
+    });
+    const result = parseStdoutLine(line, ts);
+    expect(result).toHaveLength(2);
+    expect(result[1]).toMatchObject({ kind: "tool_result" });
+    const content = (result[1] as { content?: string }).content ?? "";
+    expect(content).toContain("status: completed");
+    expect(content).toContain("exit: 0");
+    expect(content).toContain("exit_code: 0");
+    expect(content).toContain("Done");
+  });
+
+  it("falls back to part.id for the tool use id", () => {
+    const ts = "2026-06-03T00:00:00.000Z";
+    const line = JSON.stringify({
+      type: "tool_use",
+      part: { id: "call_id_alt", tool: "read", state: { status: "completed", output: "ok" } },
+    });
+    const result = parseStdoutLine(line, ts);
+    expect(result[0]).toMatchObject({ kind: "tool_call", toolUseId: "call_id_alt" });
+  });
+
+  it("does not emit a tool_result for in-progress tools", () => {
+    const ts = "2026-06-03T00:00:00.000Z";
+    const line = JSON.stringify({
+      type: "tool_use",
+      part: { callID: "call_run", tool: "bash", state: { status: "running" } },
+    });
+    const result = parseStdoutLine(line, ts);
+    expect(result).toHaveLength(1);
+    expect(result[0].kind).toBe("tool_call");
+  });
+
   it("handles raw stdout lines that aren't JSON", () => {
     const ts = "2026-06-03T00:00:00.000Z";
     const result = parseStdoutLine("plain text line", ts);

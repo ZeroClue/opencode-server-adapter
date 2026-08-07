@@ -5,6 +5,7 @@ import type {
 } from "@paperclipai/adapter-utils";
 import { asString, asNumber } from "@paperclipai/adapter-utils/server-utils";
 import { ensureOpenCodeServerRunning } from "./lifecycle.js";
+import { basicAuthHeaders } from "./conn.js";
 
 function summarizeStatus(checks: AdapterEnvironmentCheck[]): AdapterEnvironmentTestResult["status"] {
   if (checks.some((c) => c.level === "error")) return "fail";
@@ -22,11 +23,13 @@ export async function testEnvironment(
   const model = asString(ctx.config.model, "");
   const modeRaw = asString(ctx.config.mode, "");
   const mode: "spawn" | "connect" | undefined = modeRaw === "connect" || modeRaw === "spawn" ? modeRaw : undefined;
+  const password = asString(ctx.config.password, "");
+  const auth = basicAuthHeaders({ hostname, port, ...(password ? { password } : {}) });
 
   // 1. Server healthcheck
   try {
     await ensureOpenCodeServerRunning({ hostname, port, command: asString(ctx.config.command, "opencode"), ...(mode ? { mode } : {}) });
-    const healthRes = await fetch(`${baseUrl}/global/health`, { signal: AbortSignal.timeout(3000) });
+    const healthRes = await fetch(`${baseUrl}/global/health`, { headers: auth, signal: AbortSignal.timeout(3000) });
     if (healthRes.ok) {
       const healthData = await healthRes.json() as any;
       checks.push({
@@ -63,7 +66,7 @@ export async function testEnvironment(
   const serverOk = !checks.some((c) => c.code === "opencode_server_unreachable" || c.code === "opencode_server_unhealthy" || c.code === "opencode_server_remote_unreachable");
   if (serverOk) {
     try {
-      const providerRes = await fetch(`${baseUrl}/provider`, { signal: AbortSignal.timeout(3000) });
+      const providerRes = await fetch(`${baseUrl}/provider`, { headers: auth, signal: AbortSignal.timeout(3000) });
       if (providerRes.ok) {
         const providerData = await providerRes.json() as any;
         const connected = Array.isArray(providerData.connected) ? providerData.connected.length : 0;
@@ -95,7 +98,7 @@ export async function testEnvironment(
     try {
       const sessionRes = await fetch(`${baseUrl}/session`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...auth },
         body: JSON.stringify({}),
         signal: AbortSignal.timeout(5000),
       });
@@ -112,7 +115,7 @@ export async function testEnvironment(
         }
         const probeRes = await fetch(`${baseUrl}/session/${sessionId}/message`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", ...auth },
           body: JSON.stringify(messagePayload),
           signal: AbortSignal.timeout(60000),
         });
@@ -131,7 +134,7 @@ export async function testEnvironment(
             message: `Probe returned status ${probeRes.status}`,
           });
         }
-        fetch(`${baseUrl}/session/${sessionId}`, { method: "DELETE" }).catch(() => {});
+        fetch(`${baseUrl}/session/${sessionId}`, { method: "DELETE", headers: auth }).catch(() => {});
       }
     } catch (err) {
       checks.push({
