@@ -123,14 +123,23 @@ connect-only mode (no workspace sync).
   "model": "opencode-go/deepseek-v4-flash",
   "hostname": "agent-a.tailnet",
   "port": 4096,
-  "password": "{{ secret:opencode-server-pass }}",
+  "password": { "type": "secret_ref", "secretId": "3f8db407-...-uuid", "version": "latest" },
   "mode": "connect",
   "agent": "build",
   "steps": 300,
   "sshHost": "agent-a.tailnet",
   "sshPort": 2222,
   "sshUsername": "opencode",
-  "sshPrivateKey": "{{ secret:opencode-vps-key }}",
+  "sshPrivateKey": { "type": "secret_ref", "secretId": "9c2e...-uuid-...", "version": "latest" },
   "remoteServerCwd": "/work"
 }
 ```
+
+> **Secrets**: reference Paperclip secrets via the canonical env-binding form
+> `{ "type": "secret_ref", "secretId": "<UUID>", "version": "latest" }`
+> (or `"type": "plain", "value": "..."`, or a plain string literal). The
+> `secretId` is the Paperclip secret's UUID — not its name. A bare inline
+> string is treated as a literal value; inline secrets are discouraged for
+> `password`/`sshPrivateKey`. Do **not** use a `{{ secret:name }}` style
+> placeholder — that syntax does not exist and would be stored as a literal
+> string.

@@ -35,6 +35,8 @@ curl http://opencode-serve.<your-tailnet>:4096/global/health
 # 3. Store the password in Paperclip's secret store.
 paperclipai secret create opencode-server-password
 # paste the same OPENCODE_SERVER_PASSWORD value you put in deploy/.env
+# Note the secret's UUID from the command output — you reference it below;
+# agent config secretId values are UUIDs, not names.
 
 # 4. Create the Paperclip agent in connect mode.
 paperclipai agent create \
@@ -44,7 +46,7 @@ paperclipai agent create \
     "hostname": "opencode-serve.<your-tailnet>",
     "port": 4096,
     "mode": "connect",
-    "password": { "type": "secret_ref", "secretId": "opencode-server-password", "version": "latest" },
+    "password": { "type": "secret_ref", "secretId": "<the-secret-uuid-from-step-3>", "version": "latest" },
     "model": "opencode-go/deepseek-v4-flash"
   }'
 ```
